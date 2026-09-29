@@ -1,0 +1,19 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: app2
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: com.example.common
+        spring.json.value.default.type: com.example.common.Message
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+app2:
+  input-topic: b
+  output-topic: c
+  constant: 100

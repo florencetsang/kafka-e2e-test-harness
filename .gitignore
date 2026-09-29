@@ -1,0 +1,69 @@
+# --- Maven ---
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Java build output ---
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# --- Spring Boot repackaged artifacts (belt and suspenders) ---
+*.jar.original
+
+# --- Eclipse / STS ---
+.settings/
+.classpath
+.project
+.factorypath
+.apt_generated/
+.apt_generated_test/
+bin/
+*.launch
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# --- VS Code ---
+.vscode/
+.history/
+
+# --- NetBeans ---
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# --- Test reports / logs ---
+*.log
+surefire-reports/
+failsafe-reports/
+jacoco.exec
+site/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*~
+*.swp
