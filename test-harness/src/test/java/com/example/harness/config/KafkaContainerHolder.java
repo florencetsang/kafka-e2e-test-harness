@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class KafkaContainerHolder {
 
-    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka:7.5.3");
+    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka:7.9.10");
 
     /** One shared broker for the whole suite. */
     private static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);

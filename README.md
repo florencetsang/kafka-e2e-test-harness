@@ -68,6 +68,10 @@ Tech stack: Java 17 · Maven multi-module · Spring Boot 3.2.5 (`spring-kafka`) 
 - **Docker** must be running and reachable — the harness starts `confluentinc/cp-kafka:7.5.3`
   (plus Testcontainers' `ryuk` reaper) through it.
 
+On this Windows machine that means **Docker Desktop must be running with its engine started**
+(click the Docker Desktop tray icon and wait until it says "Docker Desktop is running").
+Nothing else is required — no `DOCKER_HOST` or other environment variables.
+
 ## How to run
 
 ### 1. Full build + E2E tests (default)
@@ -101,20 +105,42 @@ The log shows the full chain for each scenario:
 [Harness] asserted id='t-001' on topic 'c' has value 110
 ```
 
-**Note on Docker connectivity.** Testcontainers auto-discovers Docker Desktop's socket. If your
-daemon is remote or non-standard, point the client at it explicitly, e.g.:
+### Docker connectivity on this machine (and troubleshooting)
 
-```bash
-DOCKER_HOST=tcp://localhost:2375 mvn clean install
-```
+The suite uses Testcontainers 1.19.8, whose docker-java client speaks **Docker Engine API 1.32 by
+default**. Two machine-specific facts matter here, both already configured on this machine:
 
-On the Windows machine this POC was developed on there is no Docker Desktop; a static dockerd
-runs inside the `Ubuntu` WSL distro and is reachable only on the **IPv6 loopback relay**, so the
-working invocation there is:
+1. **`~/.testcontainers.properties` pins the Windows named-pipe strategy** (`docker.client.strategy=…NpipeSocketClientProviderStrategy`,
+   written automatically by IntelliJ's Testcontainers integration), so the harness talks to Docker
+   Desktop via `npipe:////./pipe/docker_engine`.
+2. **Docker Desktop 29.x dropped API versions below 1.40**, so `~/.docker-java.properties` contains
+   `api.version=1.44` to make the client compatible. Without it every request fails with
+   `400 {"message":"client version 1.32 is too old…"}`.
+
+If the build ever fails with `Could not find a valid Docker environment` and a `Status 400` with an
+empty info payload from the pipe, the **Docker Desktop engine was stopped** — historically by
+Docker Desktop's *Resource Saver*, which stops the engine after a few idle minutes. Resource Saver
+is therefore disabled on this machine (`"UseResourceSaver": false` in
+`%APPDATA%\Docker\settings-store.json`; the GUI equivalent is *Settings → Resources → Advanced →
+Enable Resource saver*). The same error after a reboot just means Docker Desktop is not running —
+start it and re-run.
+
+Note: with a brand-new Docker Desktop engine, Docker/the registry may transparently resolve the
+requested `confluentinc/cp-kafka:7.5.3` to a newer compatible tag (e.g. `7.9.10`) when pulling.
+The harness still requests `7.5.3` as specified in `plans.md`; both work identically for these tests.
+
+#### Alternative: dockerd inside WSL (no Docker Desktop needed)
+
+If Docker Desktop is unavailable, a static Docker daemon can run inside the default `Ubuntu` WSL
+distro (installed at `/opt/docker-static`, started via `/usr/local/bin/start-docker.sh`, listening on
+`tcp://0.0.0.0:2375` inside the VM). It is reachable from Windows only through WSL's **IPv6 loopback
+relay**, so point the harness at it explicitly:
 
 ```bash
 DOCKER_HOST=tcp://[::1]:2375 mvn clean install
 ```
+
+That engine (Docker 27.5.1) accepts API 1.24+, so the `api.version=1.44` file above also works with it.
 
 ### 2. Harness tests only (no rebuild of the apps)
 
