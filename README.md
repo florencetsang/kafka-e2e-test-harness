@@ -61,20 +61,20 @@ kafka-e2e-poc/
 Tech stack: Java 17 · Maven multi-module · Spring Boot 3.2.5 (`spring-kafka`) · Testcontainers
 1.19.8 · Cucumber 7.15.0 · Awaitility 4.2.0 · JSON over plain String keys.
 
-## Prerequisites
+## Getting started
 
-- **Java 17+** (the build targets release 17; newer JDKs work fine)
+### Prerequisites
+
+- **Java 17+** (the build targets release 17; newer JDKs work)
 - **Maven 3.9.x**
 - **Docker** must be running and reachable — the harness starts `confluentinc/cp-kafka:7.5.3`
   (plus Testcontainers' `ryuk` reaper) through it.
 
-On this Windows machine that means **Docker Desktop must be running with its engine started**
-(click the Docker Desktop tray icon and wait until it says "Docker Desktop is running").
-Nothing else is required — no `DOCKER_HOST` or other environment variables.
+  On Windows machine that means **Docker Desktop must be running with its engine started**
+  (click the Docker Desktop tray icon and wait until it says "Docker Desktop is running").
+  Nothing else is required — no `DOCKER_HOST` or other environment variables.
 
-## How to run
-
-### 1. Full build + E2E tests (default)
+### Build and run the E2E tests
 
 From the repo root:
 
@@ -105,50 +105,15 @@ The log shows the full chain for each scenario:
 [Harness] asserted id='t-001' on topic 'c' has value 110
 ```
 
-### Docker connectivity on this machine (and troubleshooting)
+### Other ways to run
 
-The suite uses Testcontainers 1.19.8, whose docker-java client speaks **Docker Engine API 1.32 by
-default**. Two machine-specific facts matter here, both already configured on this machine:
-
-1. **`~/.testcontainers.properties` pins the Windows named-pipe strategy** (`docker.client.strategy=…NpipeSocketClientProviderStrategy`,
-   written automatically by IntelliJ's Testcontainers integration), so the harness talks to Docker
-   Desktop via `npipe:////./pipe/docker_engine`.
-2. **Docker Desktop 29.x dropped API versions below 1.40**, so `~/.docker-java.properties` contains
-   `api.version=1.44` to make the client compatible. Without it every request fails with
-   `400 {"message":"client version 1.32 is too old…"}`.
-
-If the build ever fails with `Could not find a valid Docker environment` and a `Status 400` with an
-empty info payload from the pipe, the **Docker Desktop engine was stopped** — historically by
-Docker Desktop's *Resource Saver*, which stops the engine after a few idle minutes. Resource Saver
-is therefore disabled on this machine (`"UseResourceSaver": false` in
-`%APPDATA%\Docker\settings-store.json`; the GUI equivalent is *Settings → Resources → Advanced →
-Enable Resource saver*). The same error after a reboot just means Docker Desktop is not running —
-start it and re-run.
-
-Note: with a brand-new Docker Desktop engine, Docker/the registry may transparently resolve the
-requested `confluentinc/cp-kafka:7.5.3` to a newer compatible tag (e.g. `7.9.10`) when pulling.
-The harness still requests `7.5.3` as specified in `plans.md`; both work identically for these tests.
-
-#### Alternative: dockerd inside WSL (no Docker Desktop needed)
-
-If Docker Desktop is unavailable, a static Docker daemon can run inside the default `Ubuntu` WSL
-distro (installed at `/opt/docker-static`, started via `/usr/local/bin/start-docker.sh`, listening on
-`tcp://0.0.0.0:2375` inside the VM). It is reachable from Windows only through WSL's **IPv6 loopback
-relay**, so point the harness at it explicitly:
-
-```bash
-DOCKER_HOST=tcp://[::1]:2375 mvn clean install
-```
-
-That engine (Docker 27.5.1) accepts API 1.24+, so the `api.version=1.44` file above also works with it.
-
-### 2. Harness tests only (no rebuild of the apps)
+#### Harness tests only (apps already built)
 
 ```bash
 mvn -pl test-harness test
 ```
 
-### 3. Run the apps standalone (outside the harness)
+#### Run the apps standalone (outside the harness)
 
 The app modules are ordinary Spring Boot apps. Each builds two artifacts: a plain jar (used as a
 library by the harness) and a runnable `-exec` jar:
@@ -162,6 +127,16 @@ Defaults: `bootstrap-servers=localhost:9092`, topics `a`/`b`/`c`, multiplier `2`
 (see `app1/src/main/resources/application.yml` and `app2/src/main/resources/application.yml`).
 Point `--spring.kafka.bootstrap-servers` at any broker and the apps will happily join it — the
 harness does exactly that with the container's random port.
+
+### Troubleshooting
+
+- `Could not find a valid Docker environment` — Docker isn't running. Start it and re-run.
+- `client version 1.32 is too old. Minimum supported API version is 1.40` — the pinned
+  Testcontainers client is older than your Docker engine. Add this line to
+  `~/.docker-java.properties`:
+  ```
+  api.version=1.44
+  ```
 
 ## How the harness works (lifecycle)
 
@@ -187,19 +162,6 @@ The ordering matters and is enforced in `HarnessHooks` / `KafkaContainerHolder`:
    Scenarios execute strictly serially.
 6. **On shutdown**, both app contexts are closed in reverse start order and Testcontainers'
    Ryuk reaper removes the Kafka container when the JVM exits.
-
-### Sanity check: prove the assertion is real
-
-Edit an expected value in `test-harness/src/test/resources/features/pipeline.feature` (e.g.
-change `110` to `111`) and re-run the tests. Only that example fails, after the full timeout:
-
-```
-org.awaitility.core.ConditionTimeoutException: Assertion condition
-expected: 111L
- but was: 110L within 15 seconds.
-```
-
-Revert the change and the suite is green again.
 
 ## Design notes / gotchas handled
 
